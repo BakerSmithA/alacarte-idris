@@ -1,4 +1,4 @@
-> module ALaCarte
+> module Discussion
 
 > import Fix
 
