@@ -3,6 +3,8 @@ module ArithExample
 import Fix
 import ALaCarte
 
+%access public export
+
 data Val k = V Int
 data Add k = A k k
 data Mul k = M k k
@@ -14,10 +16,10 @@ Functor Val where
     map func (V x) = V x
 
 Functor Add where
-    map func (A x y) = A (func y) (func y)
+    map func (A x y) = A (func x) (func y)
 
 Functor Mul where
-    map func (M x y) = M (func y) (func y)
+    map func (M x y) = M (func x) (func y)
 
 -- Smart constructors
 
@@ -27,8 +29,8 @@ val x = inject (V x)
 (+) : {auto prf : Elem Add fs} -> Fix (Sig fs) -> Fix (Sig fs) -> Fix (Sig fs)
 x + y = inject (A x y)
 
-(*) : {auto prf : Elem Add fs} -> Fix (Sig fs) -> Fix (Sig fs) -> Fix (Sig fs)
-x * y = inject (A x y)
+(*) : {auto prf : Elem Mul fs} -> Fix (Sig fs) -> Fix (Sig fs) -> Fix (Sig fs)
+x * y = inject (M x y)
 
 -- Evaluation
 
@@ -62,3 +64,9 @@ pretty = eval
 
 ex1 : Expr
 ex1 = (val 1 + val 2) * val 3
+
+runEx : Expr -> IO ()
+runEx e = do
+    -- putStrLn (show e)
+    putStrLn (pretty e)
+    putStrLn (show (calc e))

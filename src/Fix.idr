@@ -5,6 +5,9 @@ module Fix
 data Fix : (f : Type -> Type) -> Type where
     In : f (Fix f) -> Fix f
 
+Show (f (Fix f)) => Show (Fix f) where
+    show x = "In " ++ show x
+
 inop : Fix f -> f (Fix f)
 inop (In x) = x
 
