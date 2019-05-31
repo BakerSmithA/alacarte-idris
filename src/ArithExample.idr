@@ -67,6 +67,5 @@ ex1 = (val 1 + val 2) * val 3
 
 runEx : Expr -> IO ()
 runEx e = do
-    -- putStrLn (show e)
     putStrLn (pretty e)
     putStrLn (show (calc e))

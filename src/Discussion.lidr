@@ -2,6 +2,12 @@
 
 > import Fix
 
+# Data Types a la Carte in Idris
+
+A brief discussion on design choices implementing DTalC.
+
+## Syntax
+
 One of the problems with the [original Data Types a la Carte implementation](http://www.cs.ru.nl/~W.Swierstra/Publications/DataTypesALaCarte.pdf),
 was that the coproduct, `(:+:)`, allowed arbitrary grouping of signatures,
 e.g. `(f :+: g) :+: g`. However, injection only performed a linear search from
@@ -11,21 +17,21 @@ such as `f :≺: (f :+: g) :+: h`.
 To remedy this, a [list of signatures can be used instead](https://reasonablypolymorphic.com/blog/better-data-types-a-la-carte/).
 For example, `f :+: g` would be written as `Sig [f, g]`, using `Sig` below.
 Here, `fs` is a list of the different signatures that make up the composite
-signature `Sig`. The `a` is the type given to each type in `fs`.
+signature `Sig`. The `a` is the type given to each `f` in `fs`.
 
 > data Sig : (fs : List (Type -> Type)) -> (a : Type) -> Type where
 >     Here  : f a -> Sig (f :: fs) a
 >     There : Sig fs a -> Sig (f :: fs) a
 
-Instead of `InL` and `InR` constructiors for the coproduct, `Sig` uses `Here`
+Instead of `InL` and `InR` constructors for the coproduct, `Sig` uses `Here`
 and `There` to describe how to construct a value of a signature. For example,
-given the DSL from Data Types a la Carte paper can be described as:
+the DSL from Data Types a la Carte paper can be described as:
 
 > data Val k = V Int
 > data Add k = A k k
 
 Using the standard definition of Fix, DSLs containing both values and addition
-can be created. Below represents the expression `1 + 2`
+can be created. Below represents the expression `1 + 2`:
 
 > ex1 : Fix (Sig [Val, Add])
 > ex1 = In (There (Here (A x y))) where
@@ -34,12 +40,18 @@ can be created. Below represents the expression `1 + 2`
 
 Clearly, this is very cumbersome to write, and so, like in the original paper,
 it would be better to automate injection into some super-type. This will involve
-finding the correct combination of `There` and `Here`. Fortunately, this has
+finding the correct combination of `There` and `Here`.
+
+Attempting to use interface instances, like in the original paper, such as
+those below to perform this linear-search requires overlapping instances, which
+Idris [does not allow](http://docs.idris-lang.org/en/v0.9.18/tutorial/classes.html).
+
+Therefore, another solution to this search is required. Fortunately, this has
 already been solved in the standard library (see `Elem` in [Data.List](https://github.com/idris-lang/Idris-dev/blob/master/libs/base/Data/List.idr)),
-with a structure similar to that below.
+with a structure similar to `Elem` below.
 
 The constructor `H` is a proof the signature `f` is at the front of the list
-of signatures to be composed together. The constructor `T` is a proof the
+of signatures to be composed together, `fs`. The constructor `T` is a proof the
 signature is after the front of the list.
 
 > data Elem : (f : Type -> Type) -> (fs : List (Type -> Type)) -> Type where
@@ -62,14 +74,14 @@ find the correct combination of `H` and `T`:
 > inj {prf=H}   x = Here x
 > inj {prf=T t} x = There (inj {prf=t} x)
 
-For convenience, the `inj` can be adapted to work with `Fix`:
+For convenience, `inj` can be adapted to work with `Fix`:
 
 > inject : {auto prf : Elem f fs} -> f (Fix (Sig fs)) -> Fix (Sig fs)
 > inject = In . inj
 
-Putting this together, smart constructors can be created for the example DSL
-containing values and addition. Instead of a type constraint, `Val :<: f`, such as
-in the original paper, `Elem Val fs` is used to prove that `Val` exists in `fs`
+Putting this together, smart constructors can be created for the example DSL.
+Instead of a type constraint, `Val :<: f`, such as in the original paper,
+`Elem Val fs` is used to prove that `Val` exists in `fs`:
 
 > val : {auto prf : Elem Val fs} -> Int -> Fix (Sig fs)
 > val x = inject (V x)
@@ -83,13 +95,21 @@ represented:
 > ex2 : Fix (Sig [Val, Add])
 > ex2 = add (val 1) (add (val 2) (val 3))
 
+## Semantics
+
 In the original paper, typeclasses provide a method to specify the semantics
-of different pieces of syntax separately by providing an algebra `f a -> a`
+of different pieces of syntax separately, by providing an algebra `f a -> a`
 to fold over a fix tree `Fix f`.
 
-In order to fold over a `Fix` tree, a `f` needs to be a functor. In this
-implementation `f` is `Sig fs`, therefore, `Sig fs` needs to be a functor.
-This *could* be done by modifying the definition of `Here` to be
+In order to fold over a `Fix` tree using `cata`, a `f` needs to be a functor:
+
+```idris
+cata : Functor f => (f a -> a) -> Fix f -> a
+cata alg = alg . map (cata alg) . inop
+```
+
+In this implementation `f` is `Sig fs`, therefore, `Sig fs` needs to be a
+functor. This *could* be done by modifying the definition of `Here` to be
 `Here : Functor f => f a -> Sig (f :: fs) a`. However, in the implementation
 so-far no functions have required `f` to be a functor and so this solution feels
 sub-optimal.
@@ -128,7 +148,8 @@ used to allow the algebra for different pieces of syntax to be defined separatel
 
 Using the same technique used to define the `Functor` instance for `Sig`, the
 `Alg` instance will be defined for `Sig fs`, provided each `f` in `fs` has its
-own `Alg` instance.
+own `Alg` instance. Again, when there is no syntax it is not possible to
+use the algebras of any signatures:
 
 > Alg (Sig []) a where
 >     alg (Here _) impossible
@@ -142,7 +163,7 @@ In the base case, `alg x` uses `alg : f a -> a`. The recursive case uses
 >     alg (There x) = alg x
 
 To continue the expression example, `Alg` instances can be created that
-translate into a result integer, the following instances be be defined:
+translate into a result integer:
 
 > Alg Val Int where
 >     alg (V x) = x
@@ -150,8 +171,16 @@ translate into a result integer, the following instances be be defined:
 > Alg Add Int where
 >     alg (A x y) = x + y
 
-Given signatures which have an algebra to integers, a `calc` function can be
-created:
+Given signatures which have an algebra to which converts their syntax to
+integers, a `calc` function can be created which calculates the value of an
+expression:
 
 > calc : (Functor (Sig fs), Alg (Sig fs) Int) => Fix (Sig fs) -> Int
 > calc = cata alg
+
+## Summary
+
+This demonstrates how Data Types a la Carte can be implemented in such as
+way as to solve one of the original problems. This shows how the inability to
+create overlapping instances is solved by using the `Elem` type, and how
+automatic proof search can be used to automatically inject into a type.
