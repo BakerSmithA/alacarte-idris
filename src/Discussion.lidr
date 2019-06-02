@@ -188,3 +188,13 @@ This demonstrates how Data Types a la Carte can be implemented in such as
 way as to solve one of the original problems. This shows how the inability to
 create overlapping instances is solved by using the `Elem` type, and how
 automatic proof search can be used to automatically inject into a type.
+
+## Related Work: Effect Handlers
+
+A problem inherent with Data Types a la Carte is it inability to allow
+different semantic domains to be easily composed. To extend the DSL presented
+with exceptions, for example, would require reimplementing the interface
+instances `Alg Val Int` and `Alg Add Int` to be `Alg Val (Either Err Int)` and
+`Alg Add (Either Err Int)`. One solution to this is [Effect Handlers](http://okmij.org/ftp/Haskell/extensible/extensible-a-la-carte.html)
+which handle only specific parts of the syntax composed, instead of *all* the
+syntax at once. Fortunately, this has [already been implemented in Idris](http://docs.idris-lang.org/en/latest/effects/introduction.html).
