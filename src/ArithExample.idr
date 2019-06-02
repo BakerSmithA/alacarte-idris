@@ -5,6 +5,8 @@ import ALaCarte
 
 %access public export
 
+-- DSL for arithmetic expressions
+
 data Val k = V Int
 data Add k = A k k
 data Mul k = M k k
