@@ -12,12 +12,16 @@ One of the problems with the [original Data Types a la Carte implementation](htt
 was that the coproduct, `(:+:)`, allowed arbitrary grouping of signatures,
 e.g. `(f :+: g) :+: g`. However, injection only performed a linear search from
 left to right, and so the subtyping relation could not be satisfied in cases
-such as `f :≺: (f :+: g) :+: h`.
+which were not right-associative, such as `f :≺: (f :+: g) :+: h`.
 
 To remedy this, a [list of signatures can be used instead](https://reasonablypolymorphic.com/blog/better-data-types-a-la-carte/).
 For example, `f :+: g` would be written as `Sig [f, g]`, using `Sig` below.
 Here, `fs` is a list of the different signatures that make up the composite
 signature `Sig`. The `a` is the type given to each `f` in `fs`.
+
+(Side note: An alternative method to solve injection into non-right-associative
+signatures involves using a [backtracking search](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.643.3533&rep=rep1&type=pdf),
+but using a list provides a simpler solution)
 
 > data Sig : (fs : List (Type -> Type)) -> (a : Type) -> Type where
 >     Here  : f a -> Sig (f :: fs) a
