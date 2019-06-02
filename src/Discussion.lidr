@@ -34,8 +34,9 @@ the DSL from Data Types a la Carte paper can be described as:
 > data Val k = V Int
 > data Add k = A k k
 
-Using the standard definition of Fix, DSLs containing both values and addition
-can be created. Below represents the expression `1 + 2`:
+Using the standard definition of Fix, and the `Here` and `There` constructors,
+DSLs containing both values and addition can be created. Below represents the
+expression `1 + 2`:
 
 > ex1 : Fix (Sig [Val, Add])
 > ex1 = In (There (Here (A x y))) where
