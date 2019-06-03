@@ -1,4 +1,4 @@
-# Data Types a la Carte in Idris
+# Data Types à la Carte in Idris
 
 A brief discussion on design choices implementing DTalC.
 
